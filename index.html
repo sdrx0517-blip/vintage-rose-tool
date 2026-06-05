@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Vintage Rose Pricing Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #FAF8F4; --surface: #FFFFFF; --surface2: #F2EFE8;
+    --border: #E0DAD0; --border2: #CCC6BA;
+    --text: #1C1A16; --text2: #6B6559; --text3: #9C9285;
+    --gold: #B8860B; --gold-bg: #FDF8EC; --gold-border: #E8D5A0;
+    --green: #2D6A4F; --green-bg: #EAF5EE;
+    --red: #8B2020; --red-bg: #FDEAEA;
+    --radius: 10px; --radius-lg: 14px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .page-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; text-align: center; }
+  .page-header h1 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 500; }
+  .page-header p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .container { max-width: 600px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  .upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius-lg); padding: 2.5rem 1rem; text-align: center; cursor: pointer; position: relative; background: var(--surface); transition: background 0.15s, border-color 0.15s; margin-bottom: 1rem; }
+  .upload-zone:hover { background: var(--surface2); border-color: var(--gold); }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .uz-icon { font-size: 42px; margin-bottom: 10px; }
+  .uz-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--text); margin-bottom: 5px; }
+  .uz-sub { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .preview-area { display: none; margin-bottom: 1rem; }
+  .preview-area.visible { display: block; }
+  .preview-wrap { position: relative; display: inline-block; }
+  .preview-img { max-width: 100%; max-height: 280px; border-radius: var(--radius-lg); border: 1px solid var(--border); display: block; }
+  .remove-btn { position: absolute; top: 8px; right: 8px; background: white; border: 1px solid var(--border2); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--text2); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  select, input[type=text] { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--surface); color: var(--text); outline: none; width: 100%; }
+  .go-btn { width: 100%; padding: 13px; background: var(--text); color: #FAF8F4; border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; cursor: pointer; }
+  .go-btn:disabled { background: var(--border2); cursor: not-allowed; color: var(--text3); }
+  .loading-state { text-align: center; padding: 3.5rem 1rem; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .spin-icon { display: inline-block; animation: spin 1s linear infinite; font-size: 32px; margin-bottom: 12px; color: var(--gold); }
+  .loading-msg { font-size: 14px; color: var(--text2); }
+  .item-id-box { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .item-thumb { width: 64px; height: 64px; border-radius: var(--radius); object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+  .item-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; margin-bottom: 5px; }
+  .item-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .conf-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+  .conf-high { background: var(--green-bg); color: var(--green); }
+  .conf-medium { background: var(--gold-bg); color: var(--gold); }
+  .conf-low { background: var(--red-bg); color: var(--red); }
+  .price-summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 1rem; }
+  .pc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+  .pc.rec { background: var(--gold-bg); border-color: var(--gold-border); }
+  .pc .pcl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3); margin-bottom: 6px; }
+  .pc.rec .pcl { color: var(--gold); }
+  .pc .pcv { font-size: 22px; font-weight: 500; color: var(--text); }
+  .pc.rec .pcv { color: var(--gold); font-family: 'Playfair Display', serif; }
+  .pc .pcs { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .profit-note { font-size: 13px; color: var(--green); background: var(--green-bg); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 1.25rem; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+  .section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 10px; }
+  .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+  .pcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+  .pcard.best { border-color: var(--gold); border-width: 1.5px; }
+  .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .pi { width: 28px; height: 28px; border-radius: 7px; display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0; }
+  .pn { font-size: 14px; font-weight: 500; }
+  .best-tag { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--gold-bg); color: var(--gold); margin-left: auto; font-weight: 500; }
+  .pr { display:flex;justify-content:space-between;align-items:baseline; }
+  .pp { font-size: 16px; font-weight: 500; }
+  .pl { font-size: 11px; color: var(--text3); }
+  .pt { font-size: 12px; color: var(--text2); margin-top: 5px; line-height: 1.5; }
+  .tip-box { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .tip-title { font-size: 13px; font-weight: 500; color: var(--gold); margin-bottom: 8px; }
+  .tip-box ul { padding-left: 1.2rem; }
+  .tip-box li { font-size: 13px; color: var(--text2); margin-bottom: 5px; line-height: 1.5; }
+  .disclaimer { font-size: 12px; color: var(--text3); text-align: center; margin-top: 1rem; line-height: 1.6; }
+  .reset-btn { width: 100%; padding: 11px; background: transparent; border: 1px solid var(--border2); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text2); cursor: pointer; margin-top: 1rem; }
+  .error-box { background: var(--red-bg); border: 1px solid #F0BEBE; border-radius: var(--radius); padding: 1rem 1.25rem; color: var(--red); font-size: 14px; margin-bottom: 1rem; }
+  @media (max-width: 420px) {
+    .platform-grid, .price-summary, .fields { grid-template-columns: 1fr; }
+    .field.full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>🏺 The Vintage Rose Pricing Tool</h1>
+  <p>Photo-powered pricing across eBay, Etsy, Poshmark, Mercari &amp; more</p>
+</div>
+<div class="container">
+  <div id="upload-section">
+    <div class="upload-zone">
+      <input type="file" id="photo-input" accept="image/*" onchange="handlePhoto(event)" />
+      <div class="uz-icon">📷</div>
+      <div class="uz-title">Take a photo or upload an image</div>
+      <div class="uz-sub">Tap to open your camera<br>or choose an existing photo from your library</div>
+    </div>
+    <div class="preview-area" id="preview-area">
+      <div class="preview-wrap">
+        <img id="preview-img" class="preview-img" src="" alt="Item preview" />
+        <button class="remove-btn" onclick="removePhoto()">✕</button>
+      </div>
+    </div>
+    <div class="fields">
+      <div class="field">
+        <label>Condition</label>
+        <select id="condition-sel">
+          <option value="excellent">Excellent / Mint</option>
+          <option value="good" selected>Good</option>
+          <option value="fair">Fair / As-Is</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>What you paid (optional)</label>
+        <input type="text" id="cost-input" placeholder="e.g. $15" />
+      </div>
+      <div class="field full">
+        <label>Extra notes (optional)</label>
+        <input type="text" id="notes-input" placeholder="e.g. marked Japan on bottom, no chips" />
+      </div>
+    </div>
+    <button class="go-btn" id="go-btn" onclick="runSearch()" disabled>🔍 &nbsp;Identify &amp; Research Pricing</button>
+  </div>
+  <div id="loading" style="display:none" class="loading-state">
+    <div class="spin-icon">⟳</div>
+    <div class="loading-msg" id="loading-msg">Identifying your item...</div>
+  </div>
+  <div id="error-area"></div>
+  <div id="results-area"></div>
+</div>
+<script>
+let photoBase64 = null, photoMime = 'image/jpeg';
+const PLATFORMS = [
+  { id:'ebay', name:'eBay', icon:'🛒', color:'#E1A800' },
+  { id:'etsy', name:'Etsy', icon:'🌿', color:'#F1641E' },
+  { id:'poshmark', name:'Poshmark', icon:'👗', color:'#CF2E7B' },
+  { id:'mercari', name:'Mercari', icon:'🏷️', color:'#4E2D89' },
+  { id:'whatnot', name:'WhatNot', icon:'🎙️', color:'#7B2FF7' },
+  { id:'chairish', name:'Chairish', icon:'🛋️', color:'#3A7D44' },
+  { id:'ruby_lane', name:'Ruby Lane', icon:'💎', color:'#BE2034' },
+  { id:'1stdibs', name:'1stDibs', icon:'🏛️', color:'#2E2E2E' }
+];
+function handlePhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  photoMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    photoBase64 = ev.target.result.split(',')[1];
+    document.getElementById('preview-img').src = ev.target.result;
+    document.getElementById('preview-area').className = 'preview-area visible';
+    document.getElementById('go-btn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+function removePhoto() {
+  photoBase64 = null;
+  document.getElementById('preview-img').src = '';
+  document.getElementById('preview-area').className = 'preview-area';
+  document.getElementById('photo-input').value = '';
+  document.getElementById('go-btn').disabled = true;
+}
+async function runSearch() {
+  if (!photoBase64) return;
+  const condition = document.getElementById('condition-sel').value;
+  const cost = document.getElementById('cost-input').value.trim();
+  const notes = document.getElementById('notes-input').value.trim();
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('error-area').innerHTML = '';
+  document.getElementById('results-area').innerHTML = '';
+  const msgs = ['Identifying your item...','Analyzing age, maker and style...','Checking eBay sold listings...','Scanning Etsy and Poshmark...','Calculating your best price range...'];
+  let mi = 0;
+  const msgEl = document.getElementById('loading-msg');
+  const ticker = setInterval(() => { mi=(mi+1)%msgs.length; msgEl.textContent=msgs[mi]; }, 2000);
+  try {
+    const resp = await fetch('/api/price', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: photoMime, data: photoBase64 } },
+          { type: 'text', text: buildPrompt(condition, cost, notes) }
+        ]}]
+      })
+    });
+    clearInterval(ticker);
+    document.getElementById('loading').style.display = 'none';
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error?.message || JSON.stringify(data));
+    const textBlock = data.content && data.content.find(b => b.type === 'text');
+    if (!textBlock) throw new Error('No response received');
+    const result = JSON.parse(textBlock.text.replace(/```json|```/g,'').trim());
+    renderResults(result, cost);
+  } catch(e) {
+    clearInterval(ticker);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+    document.getElementById('error-area').innerHTML = '<div class="error-box">⚠️ ' + (e.message||'Something went wrong. Please try again.') + '</div>';
+  }
+}
+function buildPrompt(condition, cost, notes) {
+  return 'You are an expert antique and vintage appraiser AND resale market analyst. Look carefully at the photo and identify what the item is, its likely era, maker/brand if visible, material, and style.\n\nCONDITION: ' + condition + '\n' + (cost?'SELLER PAID: '+cost+'\n':'') + (notes?'EXTRA NOTES: '+notes+'\n':'') + '\nRespond ONLY with a JSON object, no markdown, no backticks:\n{"item_name":"specific name","item_description":"2-3 sentences","confidence":"high/medium/low","condition_note":"how condition affects price","price_low":12,"price_high":65,"price_recommended":35,"recommended_platform":"eBay","recommended_platform_reason":"why","platforms":{"ebay":{"low":10,"high":55,"avg":28,"listings":"~60 sold","tip":"tip"},"etsy":{"low":20,"high":70,"avg":38,"listings":"~35 active","tip":"tip"},"poshmark":{"low":12,"high":40,"avg":22,"listings":"~10 active","tip":"tip"},"mercari":{"low":10,"high":38,"avg":20,"listings":"~25 active","tip":"tip"},"whatnot":{"low":8,"high":75,"avg":30,"listings":"auction format","tip":"tip"},"chairish":{"low":45,"high":130,"avg":80,"listings":"~6 active","tip":"tip"},"ruby_lane":{"low":35,"high":100,"avg":60,"listings":"~4 active","tip":"tip"},"1stdibs":{"low":90,"high":300,"avg":160,"listings":"~2 active","tip":"tip"}},"seller_tips":["tip 1","tip 2","tip 3"]}';
+}
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function renderResults(r, cost) {
+  const confClass = {high:'conf-high',medium:'conf-medium',low:'conf-low'}[r.confidence]||'conf-medium';
+  const src = document.getElementById('preview-img').src;
+  let profitHtml = '';
+  if (cost) {
+    const cn = parseFloat(cost.replace(/[^0-9.]/g,''));
+    if (!isNaN(cn) && cn > 0) {
+      const profit = (r.price_recommended - cn).toFixed(2);
+      const margin = ((r.price_recommended - cn)/r.price_recommended*100).toFixed(0);
+      profitHtml = '<div class="profit-note">📈 Est. profit: <strong>$'+profit+'</strong> · '+margin+'% margin</div>';
+    }
+  }
+  const pcards = PLATFORMS.map(p => {
+    const pd = r.platforms[p.id]; if (!pd) return '';
+    const isBest = r.recommended_platform === p.name;
+    return '<div class="pcard'+(isBest?' best':'')+'"><div class="ph"><div class="pi" style="background:'+p.color+'20">'+p.icon+'</div><span class="pn">'+p.name+'</span>'+(isBest?'<span class="best-tag">Best fit</span>':'')+'</div><div class="pr"><span class="pp">'+fmt(pd.low)+' - '+fmt(pd.high)+'</span><span class="pl">'+pd.listings+'</span></div><div class="pt">Avg '+fmt(pd.avg)+' · '+pd.tip+'</div></div>';
+  }).join('');
+  const tips = (r.seller_tips||[]).map(t=>'<li>'+t+'</li>').join('');
+  document.getElementById('results-area').innerHTML = '<div class="item-id-box"><img class="item-thumb" src="'+src+'" /><div><div class="item-name">'+r.item_name+'<span class="conf-badge '+confClass+'">'+r.confidence+' confidence</span></div><div class="item-desc">'+r.item_description+'</div><div style="font-size:12px;color:var(--text3);margin-top:5px">'+r.condition_note+'</div></div></div><div class="price-summary"><div class="pc"><div class="pcl">Market low</div><div class="pcv">'+fmt(r.price_low)+'</div><div class="pcs">Do not go below this</div></div><div class="pc rec"><div class="pcl">Recommended</div><div class="pcv">'+fmt(r.price_recommended)+'</div><div class="pcs">Sweet spot</div></div><div class="pc"><div class="pcl">Market high</div><div class="pcv">'+fmt(r.price_high)+'</div><div class="pcs">Top dollar</div></div></div>'+profitHtml+'<div class="divider"></div><div class="section-title">Pricing by platform</div><div class="platform-grid">'+pcards+'</div><div class="divider"></div><div class="tip-box"><div class="tip-title">💡 Seller tips</div><ul>'+tips+'</ul></div><div class="disclaimer">AI estimates — verify against current sold listings before pricing.</div><button class="reset-btn" onclick="resetAll()">🔄 Research another item</button>';
+}
+function resetAll() {
+  removePhoto();
+  document.getElementById('cost-input').value = '';
+  document.getElementById('notes-input').value = '';
+  document.getElementById('results-area').innerHTML = '';
+  document.getElementById('error-area').innerHTML = '';
+  document.getElementById('upload-section').style.display = 'block';
+}
+</script>
+</body>
+</html>
