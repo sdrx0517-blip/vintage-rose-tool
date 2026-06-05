@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>The Vintage Rose Pricing Tool</title>
+<title>The Vintage Rose Home — Pricing Tool</title>
+<meta property="og:title" content="The Vintage Rose Home Pricing Tool" />
+<meta property="og:description" content="Photo-powered antique & vintage pricing across eBay, Etsy, Poshmark, Mercari & more" />
+<meta property="og:image" content="https://raw.githubusercontent.com/sdrx0517-blip/vintage-rose-tool/main/logo.jpg" />
+<meta property="og:type" content="website" />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -135,14 +139,14 @@
 <script>
 let photoBase64 = null, photoMime = 'image/jpeg';
 const PLATFORMS = [
-  { id:'ebay', name:'eBay', icon:'🛒', color:'#E1A800' },
-  { id:'etsy', name:'Etsy', icon:'🌿', color:'#F1641E' },
-  { id:'poshmark', name:'Poshmark', icon:'👗', color:'#CF2E7B' },
-  { id:'mercari', name:'Mercari', icon:'🏷️', color:'#4E2D89' },
-  { id:'whatnot', name:'WhatNot', icon:'🎙️', color:'#7B2FF7' },
-  { id:'chairish', name:'Chairish', icon:'🛋️', color:'#3A7D44' },
-  { id:'ruby_lane', name:'Ruby Lane', icon:'💎', color:'#BE2034' },
-  { id:'1stdibs', name:'1stDibs', icon:'🏛️', color:'#2E2E2E' }
+  { id:'ebay', name:'eBay', icon:'🛒', color:'#E1A800', url: q => `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}` },
+  { id:'etsy', name:'Etsy', icon:'🌿', color:'#F1641E', url: q => `https://www.etsy.com/search?q=${encodeURIComponent(q)}` },
+  { id:'poshmark', name:'Poshmark', icon:'👗', color:'#CF2E7B', url: q => `https://poshmark.com/search?query=${encodeURIComponent(q)}` },
+  { id:'mercari', name:'Mercari', icon:'🏷️', color:'#4E2D89', url: q => `https://www.mercari.com/search/?keyword=${encodeURIComponent(q)}` },
+  { id:'whatnot', name:'WhatNot', icon:'🎙️', color:'#7B2FF7', url: q => `https://www.whatnot.com/search?query=${encodeURIComponent(q)}` },
+  { id:'chairish', name:'Chairish', icon:'🛋️', color:'#3A7D44', url: q => `https://www.chairish.com/shop/${encodeURIComponent(q.replace(/ /g,'-'))}` },
+  { id:'ruby_lane', name:'Ruby Lane', icon:'💎', color:'#BE2034', url: q => `https://www.rubylane.com/search?search=${encodeURIComponent(q)}` },
+  { id:'1stdibs', name:'1stDibs', icon:'🏛️', color:'#2E2E2E', url: q => `https://www.1stdibs.com/search/?q=${encodeURIComponent(q)}` }
 ];
 function handlePhoto(e) {
   const file = e.target.files[0]; if (!file) return;
@@ -223,7 +227,8 @@ function renderResults(r, cost) {
   const pcards = PLATFORMS.map(p => {
     const pd = r.platforms[p.id]; if (!pd) return '';
     const isBest = r.recommended_platform === p.name;
-    return '<div class="pcard'+(isBest?' best':'')+'"><div class="ph"><div class="pi" style="background:'+p.color+'20">'+p.icon+'</div><span class="pn">'+p.name+'</span>'+(isBest?'<span class="best-tag">Best fit</span>':'')+'</div><div class="pr"><span class="pp">'+fmt(pd.low)+' - '+fmt(pd.high)+'</span><span class="pl">'+pd.listings+'</span></div><div class="pt">Avg '+fmt(pd.avg)+' · '+pd.tip+'</div></div>';
+    const searchUrl = p.url ? p.url(r.item_name) : '#';
+    return '<a href="'+searchUrl+'" target="_blank" style="text-decoration:none;color:inherit"><div class="pcard'+(isBest?' best':'')+'" ><div class="ph"><div class="pi" style="background:'+p.color+'20">'+p.icon+'</div><span class="pn">'+p.name+'</span>'+(isBest?'<span class="best-tag">Best fit</span>':'')+'<span style="margin-left:auto;font-size:11px;color:#B8860B">Shop →</span></div><div class="pr"><span class="pp">'+fmt(pd.low)+' - '+fmt(pd.high)+'</span><span class="pl">'+pd.listings+'</span></div><div class="pt">Avg '+fmt(pd.avg)+' · '+pd.tip+'</div></div></a>';
   }).join('');
   const tips = (r.seller_tips||[]).map(t=>'<li>'+t+'</li>').join('');
   document.getElementById('results-area').innerHTML = '<div class="item-id-box"><img class="item-thumb" src="'+src+'" /><div><div class="item-name">'+r.item_name+'<span class="conf-badge '+confClass+'">'+r.confidence+' confidence</span></div><div class="item-desc">'+r.item_description+'</div><div style="font-size:12px;color:var(--text3);margin-top:5px">'+r.condition_note+'</div></div></div><div class="price-summary"><div class="pc"><div class="pcl">Market low</div><div class="pcv">'+fmt(r.price_low)+'</div><div class="pcs">Do not go below this</div></div><div class="pc rec"><div class="pcl">Recommended</div><div class="pcv">'+fmt(r.price_recommended)+'</div><div class="pcs">Sweet spot</div></div><div class="pc"><div class="pcl">Market high</div><div class="pcv">'+fmt(r.price_high)+'</div><div class="pcs">Top dollar</div></div></div>'+profitHtml+'<div class="divider"></div><div class="section-title">Pricing by platform</div><div class="platform-grid">'+pcards+'</div><div class="divider"></div><div class="tip-box"><div class="tip-title">💡 Seller tips</div><ul>'+tips+'</ul></div><div class="disclaimer">AI estimates — verify against current sold listings before pricing.</div><button class="reset-btn" onclick="resetAll()">🔄 Research another item</button>';
